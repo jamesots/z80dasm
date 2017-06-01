@@ -2,9 +2,12 @@
   "name": "z80dasm",
   "version": "0.1.0",
   "description": "Z80 Disassembler",
-  "main": "z80dasm.js",
+  "main": "lib/z80dasm.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "prepublish": "tsc",
+    "build": "tsc",
+    "tsc": "tsc",
+    "test": "jasmine-ts 'spec/**/*.spec.ts'"
   },
   "author": "James Ots <code@jamesots.com>",
   "license": "MIT",
