@@ -2,34 +2,37 @@ export class Z80Dasm {
     disassemble(mem: number[]): [string, number] {
         let opcode = this.main[mem[0]];
         if (opcode.indexOf('nn') !== -1) {
-            return [opcode.replace('nn', this.get16bitNum(mem, 1)), 3];
+            const num = this.get16bitNum(mem, 1);
+            return [opcode.replace('nn', `<${num}>`), 3, num];
         }
         if (opcode.indexOf('M') !== -1) {
-            return [opcode.replace('M', this.get8bitNum(mem, 1)), 2];
+            const num = this.get8bitNum(mem, 1);
+            return [opcode.replace('M', `<${num}>`), 2, num];
         }
         if (opcode.indexOf('E') !== -1) {
             // this isn't right
-            return [opcode.replace('E', this.get8bitRelative(mem, 1)), 2];
+            const num = this.get8bitRelative(mem, 1);
+            return [opcode.replace('E', `<${num}>`), 2, num];
         }
-        return [opcode, 1];
+        return [opcode, 1, null];
     }
 
     get16bitNum(mem: number[], start: number): string {
         let num = (mem[start] & 0xff) + ((mem[start + 1] & 0xff) * 256);
         let hex = num.toString(16);
-        return '$' + '0'.repeat(4 - hex.length) + hex;
+        return '0'.repeat(4 - hex.length) + hex;
     }
 
     get8bitNum(mem: number[], start: number): string {
         let num = mem[start] & 0xff;
         let hex = num.toString(16);
-        return '$' + '0'.repeat(4 - hex.length) + hex;
+        return '0'.repeat(4 - hex.length) + hex;
     }
 
     get8bitRelative(mem: number[], start: number): string {
         let num = mem[start];
         let hex = num.toString(16);
-        return '$' + '0'.repeat(4 - hex.length) + hex;
+        return '0'.repeat(4 - hex.length) + hex;
     }
 
     main = [

@@ -5,8 +5,8 @@ describe('z80dasm', function() {
         let dasm = new Z80Dasm();
         expect(dasm.main.length).toBe(256);
 
-        expect(dasm.disassemble([0x00])).toEqual(['nop', 1]);
+        expect(dasm.disassemble([0x00])).toEqual(['nop', 1, null]);
 
-        expect(dasm.disassemble([0x01, 0x02, 0x03])).toEqual(['ld bc,$0302', 3]);
+        expect(dasm.disassemble([0x01, 0x02, 0x03])).toEqual(['ld bc,<0302>', 3, '0302']);
     });
 });
