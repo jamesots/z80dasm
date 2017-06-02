@@ -91,4 +91,17 @@ describe('z80dasm', function() {
             ['inc (iy - 2)', 3]
         ]);
     });
+
+    it('should disassemble ix/iy bit instructions', function() {
+        mem.set([0xDD, 0xCB, 0x00, 0x05,
+            0xDD, 0xCB, 0x40, 0x05,
+            0xDD, 0xCB, 0x80, 0x05], 0);
+        let result = dasm.dasmMultiple(Array.from(mem), 0, 12);
+
+        expect(result).toEqual([
+            ['rlc (ix + 5),b', 4],
+            ['bit 0,(ix + 5)', 4],
+            ['res 0,(ix + 5),b', 4]
+        ]);
+    });
 });

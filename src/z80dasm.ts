@@ -20,16 +20,16 @@ export class Z80Dasm {
     dasmSingle(mem: number[], start: number, opcodes = this.main, bytes = 0, hl?): [string, number] {
         let opcode = opcodes[mem[start]];
         if (opcode === 'BITS') {
-            return this.dasmSingle(mem, (start + 1) % 0x10000, this.cb, 1);
+            return this.dasmSingle(mem, (start + 1) % 0x10000, this.cb, bytes + 1, hl);
         }
         if (opcode === 'EXTD') {
-            return this.dasmSingle(mem, (start + 1) % 0x10000, this.ed, 1);
+            return this.dasmSingle(mem, (start + 1) % 0x10000, this.ed, bytes + 1, hl);
         }
         if (opcode === 'IX') {
-            return this.dasmSingle(mem, (start + 1) % 0x1000, this.main, 1, 'ix');
+            return this.dasmSingle(mem, (start + 1) % 0x1000, this.main, bytes + 1, 'ix');
         }
         if (opcode === 'IY') {
-            return this.dasmSingle(mem, (start + 1) % 0x1000, this.main, 1, 'iy');
+            return this.dasmSingle(mem, (start + 1) % 0x1000, this.main, bytes + 1, 'iy');
         }
         if (hl !== undefined) {
             if (opcode.indexOf('(HL)') !== -1) {
@@ -40,13 +40,28 @@ export class Z80Dasm {
                 } else {
                     opcode = opcode.replace('HL', hl + ' - ' + (-num));
                 }
-            }
-            if (opcode.indexOf('HL') !== -1) {
+            } else if (opcode.indexOf('HL') !== -1) {
                 opcode = opcode.replace('HL', hl);
             } else if (opcode.indexOf('H') !== -1) {
                 opcode = opcode.replace('H', hl + 'h');
             } else if (opcode.indexOf('L') !== -1) {
                 opcode = opcode.replace('L', hl + 'l');
+            } else if (opcodes === this.cb) {
+                let pattern;
+                if (mem[start] < 0x40) {
+                    opcode = opcode.replace(' ', ' XX,');
+                } else if (mem[start] < 0x80) {
+                    opcode = opcode.replace(/,./, ',XX');
+                } else {
+                    opcode = opcode.replace(',', ',XX,');
+                }
+                bytes++;
+                let num = this.get8bitRelative(mem, start + 1);
+                if (num >= 0) {
+                    opcode = opcode.replace('XX', '(' + hl + ' + ' + num + ')');
+                } else {
+                    opcode = opcode.replace('XX', '(' + hl + ' - ' + (-num) + ')');
+                }
             }
         } else {
             opcode = opcode.replace('H', 'h');
