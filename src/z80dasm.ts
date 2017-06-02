@@ -1,6 +1,10 @@
 export class Z80Dasm {
     symbols: {[addr: number]: string} = {};
 
+    constructor() {
+        this.buildCb();
+    }
+
     dasmMultiple(mem: number[], start: number, length: number) {
         let count = 0;
         let instructions = [];
@@ -12,23 +16,26 @@ export class Z80Dasm {
         return instructions;
     }
 
-    dasmSingle(mem: number[], start: number): [string, number] {
-        let opcode = this.main[mem[start]];
+    dasmSingle(mem: number[], start: number, opcodes = this.main, bytes = 0): [string, number] {
+        let opcode = opcodes[mem[start]];
+        if (opcode === 'BITS') {
+            return this.dasmSingle(mem, (start + 1) % 0x10000, this.cb, 1);
+        }
         if (opcode.indexOf('nn') !== -1) {
             const num = this.get16bitNum(mem, start + 1);
-            return [opcode.replace('nn', this.format16bitNum(num)), 3, num];
+            return [opcode.replace('nn', this.format16bitNum(num)), 3 + bytes, num];
         }
         if (opcode.indexOf('M') !== -1) {
             const num = this.get8bitNum(mem, start + 1);
-            return [opcode.replace('M', this.format8bitNum(num)), 2, num];
+            return [opcode.replace('M', this.format8bitNum(num)), 2 + bytes, num];
         }
         if (opcode.indexOf('E') !== -1) {
             // should be relative to next instruction - so
             // to jump back to a jr instruction it would be jr -2
             const num = this.get8bitRelative(mem, start + 1);
-            return [opcode.replace('E', this.formatRelative(start + 2, num)), 2, num];
+            return [opcode.replace('E', this.formatRelative(start + 2, num)), 2 + bytes, num];
         }
-        return [opcode, 1, null];
+        return [opcode, 1 + bytes, null];
     }
 
     get16bitNum(mem: number[], start: number): number {
@@ -327,4 +334,21 @@ export class Z80Dasm {
         'cp M',
         'rst 38h'
     ];
+
+    cb = [];
+    private buildCb() {
+        const operands = ['b', 'c', 'd', 'e', 'h', 'l', '(hl)', 'a'];
+        for (const instr of ['rlc', 'rrc', 'rl', 'rr', 'sla', 'sra', 'sll', 'srl']) {
+            for (const operand of operands) {
+                this.cb.push(instr + ' ' + operand);
+            }
+        }
+        for (const instr of ['bit', 'res', 'set']) {
+            for (let bit = 0; bit < 8; bit++) {
+                for (const operand of operands) {
+                    this.cb.push(instr + ' ' + bit + ',' + operand);
+                }
+            }
+        }
+    }
 }

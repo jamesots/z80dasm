@@ -46,4 +46,14 @@ describe('z80dasm', function() {
             ['jr bar', 2, -2]
         ]);
     });
+
+    it('should disassemble bit instructions', function() {
+        mem.set([0xCB, 0x00, 0xCB, 0xA1], 0);
+        let result = dasm.dasmMultiple(Array.from(mem), 0, 4);
+
+        expect(result).toEqual([
+            ['rlc b', 2, null],
+            ['res 4,c', 2, null]
+        ]);
+    });
 });
