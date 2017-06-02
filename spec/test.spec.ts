@@ -56,4 +56,15 @@ describe('z80dasm', function() {
             ['res 4,c', 2, null]
         ]);
     });
+
+    it('should disassemble extended instructions', function() {
+        mem.set([0xED, 0x40, 0xED, 0xA0], 0);
+        let result = dasm.dasmMultiple(Array.from(mem), 0, 4);
+
+        expect(result).toEqual([
+            ['in b,(c)', 2, null],
+            ['ldi', 2, null]
+        ]);
+
+    });
 });

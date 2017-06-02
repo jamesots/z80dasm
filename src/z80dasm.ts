@@ -3,6 +3,7 @@ export class Z80Dasm {
 
     constructor() {
         this.buildCb();
+        this.buildEd();
     }
 
     dasmMultiple(mem: number[], start: number, length: number) {
@@ -20,6 +21,9 @@ export class Z80Dasm {
         let opcode = opcodes[mem[start]];
         if (opcode === 'BITS') {
             return this.dasmSingle(mem, (start + 1) % 0x10000, this.cb, 1);
+        }
+        if (opcode === 'EXTD') {
+            return this.dasmSingle(mem, (start + 1) % 0x10000, this.ed, 1);
         }
         if (opcode.indexOf('nn') !== -1) {
             const num = this.get16bitNum(mem, start + 1);
@@ -351,4 +355,109 @@ export class Z80Dasm {
             }
         }
     }
+
+    buildEd() {
+        this.ed.splice(0, 0, ...new Array(0x40));
+        this.ed.splice(0x80, 0, ...new Array(0x20));
+        this.ed.splice(0xC0, 0, ...new Array(0x40));
+    }
+
+    ed = [
+'in b,(c)',
+'out (c),b',
+'sbc hl,bc',
+'ld (**),bc',
+'neg',
+'retn',
+'im 0',
+'ld i,a',
+'in c,(c)',
+'out (c),c',
+'adc hl,bc',
+'ld bc,(**)',
+'neg',
+'reti',
+'im 0/1',
+'ld r,a',
+'in d,(c)',
+'out (c),d',
+'sbc hl,de',
+'ld (**),de',
+'neg',
+'retn',
+'im 1',
+'ld a,i',
+'in e,(c)',
+'out (c),e',
+'adc hl,de',
+'ld de,(**)',
+'neg',
+'retn',
+'im 2',
+'ld a,r',
+'in h,(c)',
+'out (c),h',
+'sbc hl,hl',
+'ld (**),hl',
+'neg',
+'retn',
+'im 0',
+'rrd',
+'in l,(c)',
+'out (c),l',
+'adc hl,hl',
+'ld hl,(**)',
+'neg',
+'retn',
+'im 0/1',
+'rld',
+'in (c)',
+'out (c),0',
+'sbc hl,sp',
+'ld (**),sp',
+'neg',
+'retn',
+'im 1',
+'',
+'in a,(c)',
+'out (c),a',
+'adc hl,sp',
+'ld sp,(**)',
+'neg',
+'retn',
+'im 2',
+'',
+'ldi',
+'cpi',
+'ini',
+'outi',
+'',
+'',
+'',
+'',
+'ldd',
+'cpd',
+'ind',
+'outd',
+'',
+'',
+'',
+'',
+'ldir',
+'cpir',
+'inir',
+'otir',
+'',
+'',
+'',
+'',
+'lddr',
+'cpdr',
+'indr',
+'otdr',
+'',
+'',
+'',
+''
+    ]
 }
