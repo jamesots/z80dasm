@@ -1,38 +1,72 @@
 export class Z80Dasm {
-    disassemble(mem: number[]): [string, number] {
-        let opcode = this.main[mem[0]];
+    symbols: {[addr: number]: string} = {};
+
+    dasmMultiple(mem: number[], start: number, length: number) {
+        let count = 0;
+        let instructions = [];
+        while (count < length) {
+            const instr = this.dasmSingle(mem, start + count);
+            instructions.push(instr);
+            count += instr[1];
+        }
+        return instructions;
+    }
+
+    dasmSingle(mem: number[], start: number): [string, number] {
+        let opcode = this.main[mem[start]];
         if (opcode.indexOf('nn') !== -1) {
-            const num = this.get16bitNum(mem, 1);
-            return [opcode.replace('nn', `<${num}>`), 3, num];
+            const num = this.get16bitNum(mem, start + 1);
+            return [opcode.replace('nn', this.format16bitNum(num)), 3, num];
         }
         if (opcode.indexOf('M') !== -1) {
-            const num = this.get8bitNum(mem, 1);
-            return [opcode.replace('M', `<${num}>`), 2, num];
+            const num = this.get8bitNum(mem, start + 1);
+            return [opcode.replace('M', this.format8bitNum(num)), 2, num];
         }
         if (opcode.indexOf('E') !== -1) {
-            // this isn't right
-            const num = this.get8bitRelative(mem, 1);
-            return [opcode.replace('E', `<${num}>`), 2, num];
+            // should be relative to next instruction - so
+            // to jump back to a jr instruction it would be jr -2
+            const num = this.get8bitRelative(mem, start + 1);
+            return [opcode.replace('E', this.formatRelative(start + 2, num)), 2, num];
         }
         return [opcode, 1, null];
     }
 
-    get16bitNum(mem: number[], start: number): string {
-        let num = (mem[start] & 0xff) + ((mem[start + 1] & 0xff) * 256);
-        let hex = num.toString(16);
-        return '0'.repeat(4 - hex.length) + hex;
+    get16bitNum(mem: number[], start: number): number {
+        return (mem[start % 0x10000] & 0xff) + ((mem[(start + 1) % 0x10000] & 0xff) * 256);
     }
 
-    get8bitNum(mem: number[], start: number): string {
-        let num = mem[start] & 0xff;
+    format16bitNum(num: number): string {
+        if (this.symbols[num]) {
+            return this.symbols[num];
+        }
         let hex = num.toString(16);
-        return '0'.repeat(4 - hex.length) + hex;
+        return '$' + '0'.repeat(4 - hex.length) + hex;
     }
 
-    get8bitRelative(mem: number[], start: number): string {
-        let num = mem[start];
+    get8bitNum(mem: number[], start: number): number {
+        return mem[start % 0x10000] & 0xff;
+    }
+
+    format8bitNum(num: number): string {
+        if (this.symbols[num]) {
+            return this.symbols[num];
+        }
         let hex = num.toString(16);
-        return '0'.repeat(4 - hex.length) + hex;
+        return '$' + '0'.repeat(4 - hex.length) + hex;
+    }
+
+    get8bitRelative(mem: number[], start: number): number {
+        return mem[start % 0x10000] | 0xFFFFFF00;
+    }
+
+    formatRelative(addr: number, num: number): string {
+        if (this.symbols[addr + num]) {
+            return this.symbols[addr + num];
+        }
+        if (num >= 0) {
+            return '+' + num;
+        }
+        return '' + num;
     }
 
     main = [
