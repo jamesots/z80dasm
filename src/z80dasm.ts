@@ -17,7 +17,7 @@ export class Z80Dasm {
         return instructions;
     }
 
-    dasmSingle(mem: number[], start: number, opcodes = this.main, bytes = 0): [string, number] {
+    dasmSingle(mem: number[], start: number, opcodes = this.main, bytes = 0, hl?): [string, number] {
         let opcode = opcodes[mem[start]];
         if (opcode === 'BITS') {
             return this.dasmSingle(mem, (start + 1) % 0x10000, this.cb, 1);
@@ -25,21 +25,48 @@ export class Z80Dasm {
         if (opcode === 'EXTD') {
             return this.dasmSingle(mem, (start + 1) % 0x10000, this.ed, 1);
         }
+        if (opcode === 'IX') {
+            return this.dasmSingle(mem, (start + 1) % 0x1000, this.main, 1, 'ix');
+        }
+        if (opcode === 'IY') {
+            return this.dasmSingle(mem, (start + 1) % 0x1000, this.main, 1, 'iy');
+        }
+        if (hl !== undefined) {
+            if (opcode.indexOf('(HL)') !== -1) {
+                bytes++;
+                let num = this.get8bitRelative(mem, start + 1);
+                if (num >= 0) {
+                    opcode = opcode.replace('HL', hl + ' + ' + num);
+                } else {
+                    opcode = opcode.replace('HL', hl + ' - ' + (-num));
+                }
+            }
+            if (opcode.indexOf('HL') !== -1) {
+                opcode = opcode.replace('HL', hl);
+            } else if (opcode.indexOf('H') !== -1) {
+                opcode = opcode.replace('H', hl + 'h');
+            } else if (opcode.indexOf('L') !== -1) {
+                opcode = opcode.replace('L', hl + 'l');
+            }
+        } else {
+            opcode = opcode.replace('H', 'h');
+            opcode = opcode.replace('L', 'l');
+        }
         if (opcode.indexOf('nn') !== -1) {
             const num = this.get16bitNum(mem, start + 1);
-            return [opcode.replace('nn', this.format16bitNum(num)), 3 + bytes, num];
+            return [opcode.replace('nn', this.format16bitNum(num)), 3 + bytes];
         }
         if (opcode.indexOf('M') !== -1) {
             const num = this.get8bitNum(mem, start + 1);
-            return [opcode.replace('M', this.format8bitNum(num)), 2 + bytes, num];
+            return [opcode.replace('M', this.format8bitNum(num)), 2 + bytes];
         }
         if (opcode.indexOf('E') !== -1) {
             // should be relative to next instruction - so
             // to jump back to a jr instruction it would be jr -2
             const num = this.get8bitRelative(mem, start + 1);
-            return [opcode.replace('E', this.formatRelative(start + 2, num)), 2 + bytes, num];
+            return [opcode.replace('E', this.formatRelative(start + 2, num)), 2 + bytes];
         }
-        return [opcode, 1 + bytes, null];
+        return [opcode, 1 + bytes];
     }
 
     get16bitNum(mem: number[], start: number): number {
@@ -67,7 +94,11 @@ export class Z80Dasm {
     }
 
     get8bitRelative(mem: number[], start: number): number {
-        return mem[start % 0x10000] | 0xFFFFFF00;
+        let num = mem[start % 0x10000] & 0xFF;
+        if (num & 0x80) {
+            return -((~num & 0xFF) + 1);
+        }
+        return num;
     }
 
     formatRelative(addr: number, num: number): string {
@@ -90,7 +121,7 @@ export class Z80Dasm {
         'ld b,M',
         'rlca',
         'ex af,af\'',
-        'add hl,bc',
+        'add HL,bc',
         'ld a,(bc)',
         'dec bc',
         'inc c',
@@ -106,7 +137,7 @@ export class Z80Dasm {
         'ld d,M',
         'rla',
         'jr E',
-        'add hl,de',
+        'add HL,de',
         'ld a,(de)',
         'dec de',
         'inc e',
@@ -114,31 +145,31 @@ export class Z80Dasm {
         'ld e,M',
         'rra',
         'jr nz,E',
-        'ld hl,nn',
-        'ld (nn),hl',
-        'inc hl',
-        'inc h',
-        'dec h',
-        'ld h,M',
+        'ld HL,nn',
+        'ld (nn),HL',
+        'inc HL',
+        'inc H',
+        'dec H',
+        'ld H,M',
         'daa',
         'jr z,E',
-        'add hl,hl',
-        'ld hl,(nn)',
-        'dec hl',
-        'inc l',
-        'dec l',
-        'ld l,M',
+        'add HL,HL',
+        'ld HL,(nn)',
+        'dec HL',
+        'inc L',
+        'dec L',
+        'ld L,M',
         'cpl',
         'jr nc,E',
         'ld sp,nn',
         'ld (nn),a',
         'inc sp',
-        'inc (hl)',
-        'dec (hl)',
-        'ld (hl),M',
+        'inc (HL)',
+        'dec (HL)',
+        'ld (HL),M',
         'scf',
         'jr c,E',
-        'add hl,sp',
+        'add HL,sp',
         'ld a,(nn)',
         'dec sp',
         'inc a',
@@ -149,129 +180,129 @@ export class Z80Dasm {
         'ld b,c',
         'ld b,d',
         'ld b,e',
-        'ld b,h',
-        'ld b,l',
-        'ld b,(hl)',
+        'ld b,H',
+        'ld b,L',
+        'ld b,(HL)',
         'ld b,a',
         'ld c,b',
         'ld c,c',
         'ld c,d',
         'ld c,e',
-        'ld c,h',
-        'ld c,l',
-        'ld c,(hl)',
+        'ld c,H',
+        'ld c,L',
+        'ld c,(HL)',
         'ld c,a',
         'ld d,b',
         'ld d,c',
         'ld d,d',
         'ld d,e',
-        'ld d,h',
-        'ld d,l',
-        'ld d,(hl)',
+        'ld d,H',
+        'ld d,L',
+        'ld d,(HL)',
         'ld d,a',
         'ld e,b',
         'ld e,c',
         'ld e,d',
         'ld e,e',
-        'ld e,h',
-        'ld e,l',
-        'ld e,(hl)',
+        'ld e,H',
+        'ld e,L',
+        'ld e,(HL)',
         'ld e,a',
-        'ld h,b',
-        'ld h,c',
-        'ld h,d',
-        'ld h,e',
-        'ld h,h',
-        'ld h,l',
-        'ld h,(hl)',
-        'ld h,a',
-        'ld l,b',
-        'ld l,c',
-        'ld l,d',
-        'ld l,e',
-        'ld l,h',
-        'ld l,l',
-        'ld l,(hl)',
-        'ld l,a',
-        'ld (hl),b',
-        'ld (hl),c',
-        'ld (hl),d',
-        'ld (hl),e',
-        'ld (hl),h',
-        'ld (hl),l',
+        'ld H,b',
+        'ld H,c',
+        'ld H,d',
+        'ld H,e',
+        'ld H,H',
+        'ld H,L',
+        'ld H,(HL)',
+        'ld H,a',
+        'ld L,b',
+        'ld L,c',
+        'ld L,d',
+        'ld L,e',
+        'ld L,H',
+        'ld L,L',
+        'ld L,(HL)',
+        'ld L,a',
+        'ld (HL),b',
+        'ld (HL),c',
+        'ld (HL),d',
+        'ld (HL),e',
+        'ld (HL),H',
+        'ld (HL),L',
         'halt',
-        'ld (hl),a',
+        'ld (HL),a',
         'ld a,b',
         'ld a,c',
         'ld a,d',
         'ld a,e',
-        'ld a,h',
-        'ld a,l',
-        'ld a,(hl)',
+        'ld a,H',
+        'ld a,L',
+        'ld a,(HL)',
         'ld a,a',
         'add a,b',
         'add a,c',
         'add a,d',
         'add a,e',
-        'add a,h',
-        'add a,l',
-        'add a,(hl)',
+        'add a,H',
+        'add a,L',
+        'add a,(HL)',
         'add a,a',
         'adc a,b',
         'adc a,c',
         'adc a,d',
         'adc a,e',
-        'adc a,h',
-        'adc a,l',
-        'adc a,(hl)',
+        'adc a,H',
+        'adc a,L',
+        'adc a,(HL)',
         'adc a,a',
         'sub b',
         'sub c',
         'sub d',
         'sub e',
-        'sub h',
-        'sub l',
-        'sub (hl)',
+        'sub H',
+        'sub L',
+        'sub (HL)',
         'sub a',
         'sbc a,b',
         'sbc a,c',
         'sbc a,d',
         'sbc a,e',
-        'sbc a,h',
-        'sbc a,l',
-        'sbc a,(hl)',
+        'sbc a,H',
+        'sbc a,L',
+        'sbc a,(HL)',
         'sbc a,a',
         'and b',
         'and c',
         'and d',
         'and e',
-        'and h',
-        'and l',
-        'and (hl)',
+        'and H',
+        'and L',
+        'and (HL)',
         'and a',
         'xor b',
         'xor c',
         'xor d',
         'xor e',
-        'xor h',
-        'xor l',
-        'xor (hl)',
+        'xor H',
+        'xor L',
+        'xor (HL)',
         'xor a',
         'or b',
         'or c',
         'or d',
         'or e',
-        'or h',
-        'or l',
-        'or (hl)',
+        'or H',
+        'or L',
+        'or (HL)',
         'or a',
         'cp b',
         'cp c',
         'cp d',
         'cp e',
-        'cp h',
-        'cp l',
-        'cp (hl)',
+        'cp H',
+        'cp L',
+        'cp (HL)',
         'cp a',
         'ret nz',
         'pop bc',
@@ -280,7 +311,7 @@ export class Z80Dasm {
         'call nz,nn',
         'push bc',
         'add a,M',
-        'rst 00h',
+        'rst $00',
         'ret z',
         'ret',
         'jp z,nn',
@@ -288,7 +319,7 @@ export class Z80Dasm {
         'call z,nn',
         'call nn',
         'adc a,M',
-        'rst 08h',
+        'rst $08',
         'ret nc',
         'pop de',
         'jp nc,nn',
@@ -296,7 +327,7 @@ export class Z80Dasm {
         'call nc,nn',
         'push de',
         'sub M',
-        'rst 10h',
+        'rst $10',
         'ret c',
         'exx',
         'jp c,nn',
@@ -304,23 +335,23 @@ export class Z80Dasm {
         'call c,nn',
         'IX',
         'sbc a,M',
-        'rst 18h',
+        'rst $18',
         'ret po',
-        'pop hl',
+        'pop HL',
         'jp po,nn',
-        'ex (sp),hl',
+        'ex (sp),HL',
         'call po,nn',
-        'push hl',
+        'push HL',
         'and M',
-        'rst 20h',
+        'rst $20',
         'ret pe',
-        'jp (hl)',
+        'jp (HL)',
         'jp pe,nn',
-        'ex de,hl',
+        'ex de,HL',
         'call pe,nn',
         'EXTD',
         'xor M',
-        'rst 28h',
+        'rst $28',
         'ret p',
         'pop af',
         'jp p,nn',
@@ -328,20 +359,20 @@ export class Z80Dasm {
         'call p,nn',
         'push af',
         'or M',
-        'rst 30h',
+        'rst $30',
         'ret m',
-        'ld sp,hl',
+        'ld sp,HL',
         'jp m,nn',
         'ei',
         'call m,nn',
         'IY',
         'cp M',
-        'rst 38h'
+        'rst $38'
     ];
 
     cb = [];
     private buildCb() {
-        const operands = ['b', 'c', 'd', 'e', 'h', 'l', '(hl)', 'a'];
+        const operands = ['b', 'c', 'd', 'e', 'H', 'L', '(HL)', 'a'];
         for (const instr of ['rlc', 'rrc', 'rl', 'rr', 'sla', 'sra', 'sll', 'srl']) {
             for (const operand of operands) {
                 this.cb.push(instr + ' ' + operand);
@@ -365,7 +396,7 @@ export class Z80Dasm {
     ed = [
 'in b,(c)',
 'out (c),b',
-'sbc hl,bc',
+'sbc HL,bc',
 'ld (**),bc',
 'neg',
 'retn',
@@ -373,7 +404,7 @@ export class Z80Dasm {
 'ld i,a',
 'in c,(c)',
 'out (c),c',
-'adc hl,bc',
+'adc HL,bc',
 'ld bc,(**)',
 'neg',
 'reti',
@@ -381,7 +412,7 @@ export class Z80Dasm {
 'ld r,a',
 'in d,(c)',
 'out (c),d',
-'sbc hl,de',
+'sbc HL,de',
 'ld (**),de',
 'neg',
 'retn',
@@ -389,31 +420,31 @@ export class Z80Dasm {
 'ld a,i',
 'in e,(c)',
 'out (c),e',
-'adc hl,de',
+'adc HL,de',
 'ld de,(**)',
 'neg',
 'retn',
 'im 2',
 'ld a,r',
-'in h,(c)',
-'out (c),h',
-'sbc hl,hl',
-'ld (**),hl',
+'in H,(c)',
+'out (c),H',
+'sbc HL,HL',
+'ld (**),HL',
 'neg',
 'retn',
 'im 0',
 'rrd',
-'in l,(c)',
-'out (c),l',
-'adc hl,hl',
-'ld hl,(**)',
+'in L,(c)',
+'out (c),L',
+'adc HL,HL',
+'ld HL,(**)',
 'neg',
 'retn',
 'im 0/1',
 'rld',
 'in (c)',
 'out (c),0',
-'sbc hl,sp',
+'sbc HL,sp',
 'ld (**),sp',
 'neg',
 'retn',
@@ -421,7 +452,7 @@ export class Z80Dasm {
 '',
 'in a,(c)',
 'out (c),a',
-'adc hl,sp',
+'adc HL,sp',
 'ld sp,(**)',
 'neg',
 'retn',
