@@ -12,7 +12,7 @@
   "author": "James Ots <code@jamesots.com>",
   "license": "MIT",
   "devDependencies": {
-    "@types/jasmine": "^2.5.48",
+    "@types/jasmine": "^2.5.49",
     "@types/node": "^7.0.23",
     "jasmine": "^2.6.0",
     "jasmine-ts": "^0.1.3",
